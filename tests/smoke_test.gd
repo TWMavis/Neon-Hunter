@@ -23,6 +23,7 @@ func _ready() -> void:
 	await _test_pickup_falls()
 	await _test_counterattacks()
 	await _test_knife_start()
+	await _test_shop_scrolls()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -220,7 +221,9 @@ func _test_full_loop() -> void:
 	game.player.global_position = game.elevator.global_position + Vector2(0, -12)
 	await _frames(3)
 	Input.action_press("move_up")
-	await _frames(2)
+	await _frames(30)
+	_check(not RunState.cleared, "a short W press does not take the elevator")
+	await _frames(110)
 	Input.action_release("move_up")
 	await _frames(2)
 	_check(RunState.cleared, "elevator clears the floor")
@@ -549,3 +552,24 @@ func _test_knife_start() -> void:
 	_check(w != &"" and w != &"shotgun" and w != &"em_net", "shop sells a weapon you don't have (%s)" % w)
 	_check(ClimbState.buy_weapon() != "" and (ClimbState.primary == w or ClimbState.secondary == w), "buy the weapon from the shop")
 	await _end(game)
+
+
+func _test_shop_scrolls() -> void:
+	print("shop scroll:")
+	ClimbState.new_climb(&"pulse_rifle", &"em_net")
+	ClimbState.credits = 999
+	for id: StringName in Catalog.chips():
+		ClimbState.owned[id] = 0   # 很多可以直接強化的晶片，讓頁面超出畫面
+	var elevator: Control = load("res://scenes/elevator/elevator_scene.tscn").instantiate()
+	add_child(elevator)
+	await _frames(5)
+	var shop := elevator.get("_shop") as ShopPanel
+	(shop.get_parent() as TabContainer).current_tab = 1
+	await _frames(5)
+	var bar := shop.get_v_scroll_bar()
+	_check(bar.max_value > shop.size.y, "shop content is taller than the panel (%.0f > %.0f)" % [bar.max_value, shop.size.y])
+	shop.scroll_vertical = 9999
+	await _frames(2)
+	_check(shop.scroll_vertical > 0, "shop page scrolls (%d)" % shop.scroll_vertical)
+	elevator.queue_free()
+	await _frames(2)

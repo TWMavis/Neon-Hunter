@@ -1,7 +1,8 @@
 class_name ShopPanel
-extends VBoxContainer
+extends ScrollContainer
 ## 電梯商店：每次賣一把武器和幾枚隨機晶片（買到已持有的晶片就升一級）、花錢刷新商品、
 ## 或花購買價 1.5 倍直接強化已持有的晶片。用信用點付款。
+## 整個商店頁面可以上下捲動（滑鼠滾輪或右側捲軸）。
 
 signal changed
 
@@ -13,9 +14,14 @@ var _message: Label
 
 
 func _ready() -> void:
-	add_theme_constant_override("separation", 4)
+	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 4)
+	add_child(body)
+
 	var head := HBoxContainer.new()
-	add_child(head)
+	body.add_child(head)
 	_credits_label = UiTheme.label("", UiTheme.YELLOW, 11)
 	_credits_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_credits_label)
@@ -24,20 +30,16 @@ func _ready() -> void:
 	_reroll_button.pressed.connect(_on_reroll)
 	head.add_child(_reroll_button)
 
-	add_child(UiTheme.label("販賣中（已持有的晶片買了會升一級）", UiTheme.CYAN, 10))
-	_stock_box = HFlowContainer.new()
-	add_child(_stock_box)
-	add_child(UiTheme.label("直接強化（購買價的 1.5 倍）", UiTheme.MAGENTA, 10))
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
-	_upgrade_box = HFlowContainer.new()
-	_upgrade_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_upgrade_box)
 	_message = UiTheme.label("擊殺獵物、通關樓層可以賺信用點", UiTheme.DIM, 9)
 	_message.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	add_child(_message)
+	body.add_child(_message)
+	body.add_child(UiTheme.label("販賣中（已持有的晶片買了會升一級）", UiTheme.CYAN, 10))
+	_stock_box = HFlowContainer.new()
+	body.add_child(_stock_box)
+	body.add_child(UiTheme.label("直接強化（購買價的 1.5 倍）", UiTheme.MAGENTA, 10))
+	_upgrade_box = HFlowContainer.new()
+	_upgrade_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(_upgrade_box)
 	refresh()
 
 
