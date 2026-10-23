@@ -34,3 +34,9 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tools/c
 | 名稱 | 版本 | 授權 | 來源 |
 |---|---|---|---|
 | Godot AI（`addons/godot_ai`） | 4.3.0 | MIT | https://github.com/hi-godot/godot-ai |
+
+## Claude Code 技能（不會打包進遊戲）
+
+| 名稱 | 版本 | 授權 | 來源 |
+|---|---|---|---|
+| awesome-gamedev-agent-skills 的 Godot 部分（16 個，`.claude/skills/godot-*`） | commit 7eb1b53 | Apache 2.0（授權與 NOTICE 放在 `.claude/skills/`） | https://github.com/gamedev-skills/awesome-gamedev-agent-skills |
