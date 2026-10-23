@@ -23,7 +23,11 @@
 | 1 / 2 / 3 | 三選一卡片 |
 | 長按 Tab | 打開晶片頁面（消耗 10% 電量） |
 | R | 死亡後重新攀登 |
-| Esc | 放開／鎖回滑鼠 |
+| Esc | 暫停並打開設定（音量、改鍵） |
+
+**手把**：左搖桿移動、右搖桿瞄準、A 跳躍、RB 衝刺、RT／LT 左右鍵攻擊、長按 X 搭電梯、長按 Back 晶片頁面、Start 重新開始。用手把時準心會跟著右搖桿。
+
+**設定**：起始畫面、電梯、遊戲中按 Esc 都能打開。主音量／音樂／音效分開調，鍵盤按鍵可以改，存在 `user://settings.cfg`。
 
 ### 一層樓
 
@@ -108,6 +112,8 @@ tests/          冒煙測試、升級畫面預覽
 改圖或改音後重新執行：`Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tools/generate_assets.gd`
 
 ## 測試
+
+每次推送到 GitHub 都會自動跑冒煙測試（`.github/workflows/tests.yml`，在 GitHub 的 Actions 分頁看結果）。本機手動跑：
 
 ```
 Godot_v4.7.2-stable_win64_console.exe --headless --path . res://tests/smoke_test.tscn

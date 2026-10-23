@@ -2,15 +2,17 @@
 
 對照 `.claude/skills/godot-*` 的建議檢查目前的程式碼。先跑了技能附的專案檢查腳本（`godot-nodes-scenes/scripts/check_godot_project.py`）：**475 個檔案，0 錯誤、0 警告**，場景與資源引用都沒問題。
 
-下面是建議，依「效果 ÷ 工作量」排序。
+下面是建議，依「效果 ÷ 工作量」排序。✅ 是已經做完的。
+
+第 3 項的做法：按鍵仍然在 `autoload/game_input.gd` 註冊（Godot 編輯器開著時改 project.godot 容易被覆蓋），改成可以在遊戲的設定畫面改鍵並存檔，另外加上手把對應。
 
 ## 優先（效果大、工作量小）
 
 | # | 項目 | 目前的做法 | 技能的建議 | 工作量 |
 |---|---|---|---|---|
-| 1 | **音量匯流排與音量設定**（godot-audio） | 每個播放器直接設音量，沒有 Music／SFX 分開，玩家不能調音量 | 建 Master／Music／SFX 三條 bus，播放器指定 bus；加一個設定畫面調音量並存檔 | 小 |
-| 2 | **GitHub 上自動跑測試**（godot-gdscript-headless-testing） | 冒煙測試只能在你電腦上手動跑 | 用 GitHub Actions 每次推送自動用無頭 Godot 跑 `tests/smoke_test.tscn`，失敗就標紅；加逾時避免卡住 | 小 |
-| 3 | **按鍵設定放進專案、支援手把**（godot-gdscript、godot-2d-movement） | 輸入動作在程式裡註冊，編輯器的 Input Map 看不到，也不能改鍵；沒有手把 | 輸入動作寫進 project.godot，加上手把對應（企劃寫的右搖桿瞄準、RT／LT） | 小～中 |
+| 1 | ✅ **音量匯流排與音量設定**（godot-audio） | 每個播放器直接設音量，沒有 Music／SFX 分開，玩家不能調音量 | 建 Master／Music／SFX 三條 bus，播放器指定 bus；加一個設定畫面調音量並存檔 | 小 |
+| 2 | ✅ **GitHub 上自動跑測試**（godot-gdscript-headless-testing） | 冒煙測試只能在你電腦上手動跑 | 用 GitHub Actions 每次推送自動用無頭 Godot 跑 `tests/smoke_test.tscn`，失敗就標紅；加逾時避免卡住 | 小 |
+| 3 | ✅ **改鍵、支援手把**（godot-gdscript、godot-2d-movement） | 輸入動作在程式裡註冊，編輯器的 Input Map 看不到，也不能改鍵；沒有手把 | 輸入動作寫進 project.godot，加上手把對應（企劃寫的右搖桿瞄準、RT／LT） | 小～中 |
 
 ## 值得做（讓你在編輯器裡直接調整）
 

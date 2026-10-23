@@ -19,7 +19,9 @@ func _ready() -> void:
 			x += 34.0
 		game.player.global_position = Vector2(150, 516)
 	await get_tree().create_timer(0.3).timeout
-	if OS.get_cmdline_user_args().has("fight"):
+	if OS.get_cmdline_user_args().has("settings"):
+		game.open_settings()
+	elif OS.get_cmdline_user_args().has("fight"):
 		for i in 40:
 			var target: Prey = null
 			for node in get_tree().get_nodes_in_group("prey"):
@@ -44,5 +46,5 @@ func _ready() -> void:
 		get_tree().paused = true
 	elif OS.get_cmdline_user_args().has("overclock"):
 		RunState.add_energy(-1000.0)
-	elif not OS.get_cmdline_user_args().has("enemies"):
+	elif not OS.get_cmdline_user_args().has("enemies") and not OS.get_cmdline_user_args().has("settings"):
 		game.gain_xp(ClimbState.xp_to_next())
