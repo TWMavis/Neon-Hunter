@@ -1,0 +1,16 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# 匯出的遊戲
+/build/
+/export/
+*.exe
+*.pck
+
+# 本機的 MCP／編輯器設定
+.mcp.json
+
+# 系統檔
+.DS_Store
+Thumbs.db
