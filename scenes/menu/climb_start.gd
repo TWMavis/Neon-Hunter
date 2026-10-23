@@ -39,6 +39,17 @@ func _ready() -> void:
 	start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	start.pressed.connect(_start)
 	root.add_child(start)
+	start.grab_focus.call_deferred()   # 手把也能直接按 A 開始
+
+	var settings_button := Button.new()
+	settings_button.text = "設定（音量、按鍵）"
+	settings_button.custom_minimum_size = Vector2(220, 22)
+	settings_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	root.add_child(settings_button)
+	var settings := SettingsPanel.new()
+	add_child(settings)
+	settings_button.pressed.connect(settings.open)
+	settings.closed.connect(settings_button.grab_focus)
 
 
 func _start() -> void:

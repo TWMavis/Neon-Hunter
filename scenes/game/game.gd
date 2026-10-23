@@ -25,6 +25,7 @@ var boss: Prey
 var hud: Hud
 var picker: CardPicker
 var chip_menu: ChipMenu
+var settings: SettingsPanel
 var tab_hold := 0.0                    # 長按 Tab 的進度（秒）；-1 代表要先放開才能再按
 var purge_active := false
 
@@ -108,6 +109,9 @@ func _ready() -> void:
 	picker = CardPicker.new()
 	picker.picked.connect(_on_card_picked)
 	hud_layer.add_child(picker)
+	settings = SettingsPanel.new()
+	settings.closed.connect(_resume.call_deferred)
+	hud_layer.add_child(settings)
 	chip_menu = ChipMenu.new()
 	chip_menu.closed.connect(_on_chip_menu_closed)
 	hud_layer.add_child(chip_menu)
@@ -196,7 +200,7 @@ func _initial_spawn() -> void:
 
 ## 長按 Tab 打開晶片頁面（避免誤觸）
 func _process(delta: float) -> void:
-	if RunState.finished or picker.visible or chip_menu.visible:
+	if RunState.finished or picker.visible or chip_menu.visible or settings.visible:
 		return
 	if not Input.is_action_pressed("chip_menu"):
 		tab_hold = 0.0
@@ -218,8 +222,16 @@ func _on_chip_menu_closed() -> void:
 	_resume.call_deferred()
 
 
+## Esc：暫停遊戲並打開設定畫面
+func open_settings() -> void:
+	if picker.visible or chip_menu.visible or settings.visible:
+		return
+	get_tree().paused = true
+	settings.open()
+
+
 func _resume() -> void:
-	if RunState.finished or picker.visible:
+	if RunState.finished or picker.visible or chip_menu.visible or settings.visible:
 		return
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_CONFINED_HIDDEN

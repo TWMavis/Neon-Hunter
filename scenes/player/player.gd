@@ -86,6 +86,8 @@ func _process(delta: float) -> void:
 	var viewport := get_viewport()
 	var from_center := viewport.get_mouse_position() - viewport.get_visible_rect().size * 0.5
 	var target := (from_center * CAMERA_LOOK_AHEAD).limit_length(CAMERA_MAX_OFFSET)
+	if GameInput.using_gamepad:
+		target = aim_dir * CAMERA_MAX_OFFSET * 0.6   # 手把：鏡頭往右搖桿瞄準的方向偏
 	camera.offset = camera.offset.lerp(target, minf(1.0, 8.0 * delta))
 	queue_redraw()
 
@@ -96,7 +98,12 @@ func _physics_process(delta: float) -> void:
 	_dash_cooldown = maxf(_dash_cooldown - delta, 0.0)
 	_invuln = maxf(_invuln - delta, 0.0)
 
-	aim_dir = global_position.direction_to(get_global_mouse_position())
+	if GameInput.using_gamepad:
+		var stick: Vector2 = GameInput.gamepad_aim()
+		if stick != Vector2.ZERO:
+			aim_dir = stick          # 手把：右搖桿瞄準，放開時保持原方向
+	else:
+		aim_dir = global_position.direction_to(get_global_mouse_position())
 	if absf(aim_dir.x) > 0.01:
 		facing = signf(aim_dir.x)
 

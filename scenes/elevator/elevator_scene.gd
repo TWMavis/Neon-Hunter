@@ -27,6 +27,7 @@ var _chips: ChipPanel
 var _shop: ShopPanel
 var _route_box: HBoxContainer
 var _picker: CardPicker
+var _settings: SettingsPanel
 
 
 func _ready() -> void:
@@ -68,10 +69,19 @@ func _ready() -> void:
 	_route_box.add_theme_constant_override("separation", 8)
 	root.add_child(_route_box)
 	_build_routes()
+	_settings = SettingsPanel.new()
+	var settings_button := Button.new()
+	settings_button.text = "設定"
+	settings_button.add_theme_font_size_override("font_size", 9)
+	settings_button.pressed.connect(_settings.open)
+	_route_box.add_child(settings_button)
+	if _route_box.get_child_count() > 0:
+		(_route_box.get_child(0) as Control).grab_focus.call_deferred()   # 手把可以直接選路線
 
 	_picker = CardPicker.new()
 	_picker.picked.connect(_on_bonus_picked)
 	add_child(_picker)
+	add_child(_settings)
 
 	if ClimbState.bonus_chip_pick:
 		ClimbState.bonus_chip_pick = false

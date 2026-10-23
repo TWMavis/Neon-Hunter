@@ -24,6 +24,7 @@ func _ready() -> void:
 	await _test_counterattacks()
 	await _test_knife_start()
 	await _test_shop_scrolls()
+	await _test_settings_and_gamepad()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -299,14 +300,14 @@ func _test_menus() -> void:
 	var elevator: Control = load("res://scenes/elevator/elevator_scene.tscn").instantiate()
 	add_child(elevator)
 	await _frames(3)
-	_check(elevator.get("_route_box").get_child_count() == 2, "elevator offers two routes")
+	_check(elevator.get("_route_box").get_child_count() == 3, "elevator offers two routes (+ settings button)")
 	_check((elevator.get("_picker") as CardPicker).visible, "black market pick shown in the elevator")
 	elevator.queue_free()
 	ClimbState.floor_index = 3
 	elevator = load("res://scenes/elevator/elevator_scene.tscn").instantiate()
 	add_child(elevator)
 	await _frames(3)
-	_check(elevator.get("_route_box").get_child_count() == 1, "only the boss route before floor 5")
+	_check(elevator.get("_route_box").get_child_count() == 2, "only the boss route before floor 5 (+ settings button)")
 	elevator.queue_free()
 	var start: Control = load("res://scenes/menu/climb_start.tscn").instantiate()
 	add_child(start)
@@ -573,3 +574,43 @@ func _test_shop_scrolls() -> void:
 	_check(shop.scroll_vertical > 0, "shop page scrolls (%d)" % shop.scroll_vertical)
 	elevator.queue_free()
 	await _frames(2)
+
+
+func _test_settings_and_gamepad() -> void:
+	print("settings + gamepad:")
+	_check(AudioServer.get_bus_index("Music") >= 0 and AudioServer.get_bus_index("SFX") >= 0, "Music and SFX buses exist")
+	var old_volumes := Settings.volumes.duplicate()
+	var old_keys := Settings.keys.duplicate()
+	Settings.set_volume("Music", 0.5)
+	_check(is_equal_approx(AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Music")), linear_to_db(0.5)), "music slider changes the Music bus")
+	Settings.set_volume("SFX", 0.0)
+	_check(AudioServer.is_bus_mute(AudioServer.get_bus_index("SFX")), "SFX at 0 mutes the bus")
+	Settings.set_key(&"dash", KEY_K)
+	_check(Settings.key_name(&"dash") == "K", "rebind dash to K")
+	var has_pad := InputMap.action_get_events(&"dash").any(func(e: InputEvent) -> bool: return e is InputEventJoypadButton)
+	_check(has_pad, "rebinding the key keeps the gamepad button")
+	var cfg := ConfigFile.new()
+	_check(cfg.load(Settings.PATH) == OK and int(cfg.get_value("keys", "dash", 0)) == KEY_K, "settings saved to user://settings.cfg")
+	Settings.reset_defaults()
+	_check(Settings.key_name(&"dash") == "Shift" and is_equal_approx(Settings.volumes["Music"], 0.7), "restore defaults")
+
+	ClimbState.new_climb()
+	var game := await _new_game()
+	GameInput.using_gamepad = true
+	Input.action_press(&"aim_up", 1.0)
+	await _frames(3)
+	_check(game.player.aim_dir.is_equal_approx(Vector2.UP), "right stick aims the player (%s)" % game.player.aim_dir)
+	Input.action_release(&"aim_up")
+	await _frames(3)
+	_check(game.player.aim_dir.is_equal_approx(Vector2.UP), "aim stays when the stick is released")
+	GameInput.using_gamepad = false
+	game.open_settings()
+	await _frames(2)
+	_check(game.settings.visible and get_tree().paused, "Esc settings pause the game")
+	game.settings.close_panel()
+	await _frames(3)
+	_check(not get_tree().paused, "closing settings resumes")
+	await _end(game)
+	Settings.volumes = old_volumes
+	Settings.keys = old_keys
+	Settings.save()

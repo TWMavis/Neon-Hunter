@@ -1,0 +1,35 @@
+# 每次推送或開 PR 時，用無頭 Godot 跑冒煙測試（tests/smoke_test.tscn）。
+# 測試失敗時 Godot 會以非 0 結束，這個工作就會標成失敗。
+name: Smoke tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GODOT_VERSION: 4.7.2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        run: |
+          curl -sSL -o godot.zip "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          ./godot --version
+
+      - name: Disable editor-only plugins
+        # Godot AI 外掛在編輯器裡會啟動 MCP 伺服器，CI 不需要
+        run: sed -i '/addons\/godot_ai\/plugin.cfg/d' project.godot
+
+      - name: Import project
+        # 第一次開專案要先匯入資源、建立類別快取（沒有 .godot 資料夾）
+        run: timeout 300 ./godot --headless --path . --import || true
+
+      - name: Run smoke test
+        run: timeout 600 ./godot --headless --path . res://tests/smoke_test.tscn

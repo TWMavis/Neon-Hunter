@@ -55,10 +55,12 @@ static func _shared() -> Audio:
 func _ready() -> void:
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
+		p.bus = &"SFX"
 		add_child(p)
 		_players.append(p)
 	_music_player = AudioStreamPlayer.new()
 	_music_player.volume_db = MUSIC_DB
+	_music_player.bus = &"Music"
 	add_child(_music_player)
 	for pending_call: Callable in _pending:
 		pending_call.call()

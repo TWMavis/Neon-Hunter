@@ -46,6 +46,8 @@ func open(title: String, cards: Array[Dictionary]) -> void:
 	for i in cards.size():
 		_row.add_child(_make_card(i, cards[i]))
 	visible = true
+	if _row.get_child_count() > 0:
+		(_row.get_child(_row.get_child_count() - cards.size()) as Control).grab_focus.call_deferred()   # 手把用方向鍵選、A 確認
 
 
 func _make_card(i: int, card: Dictionary) -> Button:

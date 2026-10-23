@@ -33,12 +33,8 @@ func _process(delta: float) -> void:
 		get_tree().paused = false
 		get_tree().change_scene_to_file("res://scenes/menu/climb_start.tscn")
 		return
-	if Input.is_action_just_pressed("ui_cancel") and not get_tree().paused:
-		# Esc：放開／鎖回滑鼠
-		if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
-			Input.mouse_mode = Input.MOUSE_MODE_CONFINED_HIDDEN
-		else:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if Input.is_action_just_pressed("ui_cancel") and not get_tree().paused and not RunState.finished:
+		game.open_settings()  # Esc：暫停並打開設定
 	queue_redraw()
 
 
@@ -141,7 +137,10 @@ func _draw() -> void:
 	if RunState.finished and not RunState.cleared:
 		_draw_death(font, view)
 	elif Input.mouse_mode != Input.MOUSE_MODE_VISIBLE:
-		_draw_crosshair(get_viewport().get_mouse_position())
+		var cross := get_viewport().get_mouse_position()
+		if GameInput.using_gamepad:
+			cross = get_viewport().get_canvas_transform() * (game.player.global_position + game.player.aim_dir * 48.0)
+		_draw_crosshair(cross)
 
 	# 長按 Tab 的進度
 	if game.tab_hold > 0.0 and not game.chip_menu.visible:
