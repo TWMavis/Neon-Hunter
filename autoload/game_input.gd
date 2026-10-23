@@ -11,6 +11,7 @@ func _ready() -> void:
 	_add_key(&"dash", [KEY_SHIFT])
 	_add_key(&"restart", [KEY_R])
 	_add_key(&"chip_menu", [KEY_TAB])
+	_add_key(&"interact", [KEY_F])
 	_add_mouse(&"attack_primary", MOUSE_BUTTON_LEFT)
 	_add_mouse(&"attack_secondary", MOUSE_BUTTON_RIGHT)
 
