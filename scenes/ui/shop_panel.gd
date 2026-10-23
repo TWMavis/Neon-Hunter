@@ -1,6 +1,6 @@
 class_name ShopPanel
 extends VBoxContainer
-## 電梯商店：隨機販賣晶片（買到已持有的晶片就升一級）、花錢刷新商品、
+## 電梯商店：每次賣一把武器和幾枚隨機晶片（買到已持有的晶片就升一級）、花錢刷新商品、
 ## 或花購買價 1.5 倍直接強化已持有的晶片。用信用點付款。
 
 signal changed
@@ -48,7 +48,15 @@ func refresh() -> void:
 
 	for child in _stock_box.get_children():
 		child.queue_free()
-	if ClimbState.shop_stock.is_empty():
+	if ClimbState.shop_weapon != &"":
+		var w := ClimbState.shop_weapon
+		var hand := "左鍵" if Catalog.PRIMARY_WEAPONS.has(w) else "右鍵"
+		var weapon_button := _item_button("%s（%s武器）\n%d 信用點" % [Catalog.item_name(w), hand, ClimbState.weapon_price(w)], UiTheme.YELLOW)
+		weapon_button.disabled = ClimbState.credits < ClimbState.weapon_price(w)
+		weapon_button.pressed.connect(_on_buy_weapon)
+		weapon_button.mouse_entered.connect(func() -> void: _message.text = "%s：%s" % [Catalog.item_name(w), ClimbState.describe_card({"type": "weapon", "id": w})[2]])
+		_stock_box.add_child(weapon_button)
+	if ClimbState.shop_stock.is_empty() and ClimbState.shop_weapon == &"":
 		_stock_box.add_child(UiTheme.label("賣完了", UiTheme.DIM, 9))
 	for id in ClimbState.shop_stock:
 		var c := Catalog.chip(id)
@@ -93,6 +101,13 @@ func _describe(id: StringName) -> void:
 
 func _on_buy(id: StringName) -> void:
 	var result := ClimbState.buy(id)
+	_message.text = result if result != "" else "信用點不足"
+	Audio.sfx("buy" if result != "" else "denied")
+	_after_change()
+
+
+func _on_buy_weapon() -> void:
+	var result := ClimbState.buy_weapon()
 	_message.text = result if result != "" else "信用點不足"
 	Audio.sfx("buy" if result != "" else "denied")
 	_after_change()

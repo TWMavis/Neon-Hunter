@@ -19,6 +19,7 @@ var _warnings := 0
 
 
 func _init() -> void:
+	seed(20261023)   # 固定亂數，重新產生時音檔不會每次都不同
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://art"))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://audio"))
 	_make_art()
@@ -434,6 +435,7 @@ func _make_sfx() -> void:
 	_save("charge", _mix([_sweep(0.35, 70.0, 150.0, "saw", 0.4), _noise(0.35, 0.25, 1200.0)]))
 	_save("blink", _sweep(0.12, 2200.0, 500.0, "sine", 0.3))
 	_save("mine", _notes([1800.0, 1800.0], 0.03, "square", 0.2))
+	_save("slash", _mix([_noise(0.1, 0.45, 7000.0, true), _sweep(0.08, 900.0, 300.0, "triangle", 0.2)]))
 
 
 func _wave(shape: String, phase: float) -> float:

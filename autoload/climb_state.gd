@@ -12,7 +12,7 @@ signal synergy_discovered(synergy: SynergyData)
 
 const FLOORS_PER_SECTION := 5     # 4 個一般樓層 + 1 個 Boss 層
 const PASSIVE_SLOTS := 4
-const START_ALLOCATION := 3      # 開局左鍵、右鍵、移動槽各分到 3 格（總額度 9）
+const START_ALLOCATION := 3      # 開局小刀、移動槽各分到 3 格，另外 3 格未分配（總額度 9）
 const MAX_CHIP_PLUS := 2
 const OVERCLOCK_CHARGES := 3          # 每次攀登的超頻機會
 const OVERCLOCK_BAR_MAX := 100.0      # 超頻條滿了回復一次超頻機會
@@ -24,8 +24,8 @@ var level := 1
 var xp := 0
 var total_capacity := START_ALLOCATION * 3   # 總晶片額度（每升一級、打倒 Boss 各 +1）
 var allocation: Dictionary = {}               # 技能 id -> 分配到的額度
-var primary := &"pulse_rifle"
-var secondary := &"em_net"
+var primary := &"knife"                 # 開場只有小刀
+var secondary := &""                     # 開場沒有右鍵武器
 var passives: Array[StringName] = []
 var owned: Dictionary = {}                 # 晶片 id -> 強化等級（0、1、2）
 var slot_of: Dictionary = {}               # 晶片 id -> 插在哪個技能；沒有的就在背包
@@ -36,6 +36,7 @@ var overclock_bar := 0.0                   # 電量溢出累積，滿了回復�
 var credits := 0                           # 信用點：擊殺、通關獲得，在電梯商店花
 var shop_stock: Array[StringName] = []     # 電梯商店目前販賣的晶片
 var shop_rerolls := 0                      # 這次電梯刷新過幾次（刷新越多次越貴）
+var shop_weapon: StringName = &""          # 電梯商店這次賣的武器
 var bonus_chip_pick := false               # 黑市層通關後可以挑一枚晶片
 var section_cleared := false
 
@@ -47,7 +48,7 @@ func _ready() -> void:
 	new_climb(primary, secondary)  # 直接執行樓層場景（F6）時也有預設配置
 
 
-func new_climb(primary_id: StringName, secondary_id: StringName) -> void:
+func new_climb(primary_id: StringName = Catalog.STARTER_WEAPON, secondary_id: StringName = &"") -> void:
 	floor_index = 0
 	floor_type = &"normal"
 	level = 1
@@ -55,7 +56,9 @@ func new_climb(primary_id: StringName, secondary_id: StringName) -> void:
 	primary = primary_id
 	secondary = secondary_id
 	total_capacity = START_ALLOCATION * 3
-	allocation = {primary: START_ALLOCATION, secondary: START_ALLOCATION, Catalog.MOVEMENT: START_ALLOCATION}
+	allocation = {primary: START_ALLOCATION, Catalog.MOVEMENT: START_ALLOCATION}
+	if secondary != &"":
+		allocation[secondary] = START_ALLOCATION
 	passives.clear()
 	owned.clear()
 	slot_of.clear()
@@ -114,6 +117,8 @@ const SHOP_SIZE := 4
 const SHOP_REROLL_BASE := 15
 const SHOP_REROLL_STEP := 5
 const DIRECT_UPGRADE_MULT := 1.5
+const WEAPON_PRICE_PRIMARY := 60
+const WEAPON_PRICE_SECONDARY := 50
 
 ## 晶片售價：額度越高越貴；傳說加價、黑市便宜
 func chip_price(id: StringName) -> int:
@@ -159,6 +164,22 @@ func _restock() -> void:
 			pool.append(id)
 	pool.shuffle()
 	shop_stock.assign(pool.slice(0, SHOP_SIZE))
+	var weapons := weapon_options()
+	shop_weapon = weapons.pick_random() if not weapons.is_empty() else &""
+
+
+## 商店每次也賣一把武器
+func weapon_price(id: StringName) -> int:
+	return WEAPON_PRICE_PRIMARY if Catalog.PRIMARY_WEAPONS.has(id) else WEAPON_PRICE_SECONDARY
+
+
+func buy_weapon() -> String:
+	if shop_weapon == &"" or credits < weapon_price(shop_weapon):
+		return ""
+	credits -= weapon_price(shop_weapon)
+	var result := apply_card({"type": "weapon", "id": shop_weapon})
+	shop_weapon = &""
+	return result
 
 
 ## 買商店的晶片：沒有的就獲得（自動插上或放背包），已經有的就升級一級
@@ -187,12 +208,16 @@ func upgrade_direct(id: StringName) -> String:
 
 ## 目前持有的技能：左鍵、右鍵、移動、被動
 func skills() -> Array[StringName]:
-	var list: Array[StringName] = [primary, secondary, Catalog.MOVEMENT]
+	var list: Array[StringName] = [primary, Catalog.MOVEMENT]
+	if secondary != &"":
+		list.insert(1, secondary)
 	list.append_array(passives)
 	return list
 
 
 func has_item(id: StringName) -> bool:
+	if id == &"":
+		return false
 	return id == primary or id == secondary or id == Catalog.MOVEMENT or passives.has(id)
 
 
@@ -406,7 +431,54 @@ func roll_level_up_cards(count := 3) -> Array[Dictionary]:
 		for id: StringName in Catalog.PASSIVES:
 			if not passives.has(id):
 				pool.append({"type": "passive", "id": id})
-	return _deal(pool, count)
+	var weapons := weapon_options()
+	for id in weapons:
+		pool.append({"type": "weapon", "id": id})
+	var cards := _deal(pool, count)
+	# 還拿著小刀或沒有右鍵武器時，保證第一張是槍
+	if needs_gun() and not cards.any(func(c: Dictionary) -> bool: return c["type"] == "weapon"):
+		var wanted := weapons.filter(func(id: StringName) -> bool:
+			return (primary == Catalog.STARTER_WEAPON and Catalog.PRIMARY_WEAPONS.has(id)) \
+				or (secondary == &"" and Catalog.SECONDARY_WEAPONS.has(id)))
+		if not wanted.is_empty():
+			cards[0] = {"type": "weapon", "id": wanted.pick_random()}
+	return cards
+
+
+## 還在用開場小刀，或還沒有右鍵武器
+func needs_gun() -> bool:
+	return primary == Catalog.STARTER_WEAPON or secondary == &""
+
+
+## 目前可以拿到的武器（手上已有的不算）
+func weapon_options() -> Array[StringName]:
+	var list: Array[StringName] = []
+	for id: StringName in Catalog.PRIMARY_WEAPONS:
+		if id != primary:
+			list.append(id)
+	for id: StringName in Catalog.SECONDARY_WEAPONS:
+		if id != secondary:
+			list.append(id)
+	return list
+
+
+## 換上新武器：左鍵或右鍵依武器種類決定。舊武器的晶片能插在新武器上的就跟著移過去，其餘放回背包；
+## 分配給舊武器的額度也轉給新武器
+func equip_weapon(id: StringName) -> void:
+	var is_primary := Catalog.PRIMARY_WEAPONS.has(id)
+	var old := primary if is_primary else secondary
+	for chip: StringName in chips_on(old):
+		if Catalog.chip(chip).fits(id):
+			slot_of[chip] = id
+		else:
+			slot_of.erase(chip)
+	allocation[id] = capacity_of(old) if old != &"" else 0
+	allocation.erase(old)
+	if is_primary:
+		primary = id
+	else:
+		secondary = id
+	_refresh()
 
 
 ## 寶箱、黑市：只出晶片
@@ -459,6 +531,12 @@ func describe_card(card: Dictionary) -> PackedStringArray:
 		"passive":
 			var info: Array = Catalog.PASSIVES[id]
 			return PackedStringArray([info[0], "新被動技能（%d / %d 格）" % [passives.size() + 1, PASSIVE_SLOTS], info[1]])
+		"weapon":
+			var is_primary := Catalog.PRIMARY_WEAPONS.has(id)
+			var info: Array = Catalog.PRIMARY_WEAPONS[id] if is_primary else Catalog.SECONDARY_WEAPONS[id]
+			var old := primary if is_primary else secondary
+			var tag := ("新左鍵武器" if is_primary else "新右鍵武器") + ("・取代%s" % Catalog.item_name(old) if old != &"" else "")
+			return PackedStringArray([info[0], tag, info[1]])
 	return PackedStringArray(["緊急充電", "全部滿級", "電量回復 40"])
 
 
@@ -481,5 +559,9 @@ func apply_card(card: Dictionary) -> String:
 			passives.append(id)
 			_refresh()
 			return "獲得被動：%s" % Catalog.PASSIVES[id][0]
+		"weapon":
+			equip_weapon(id)
+			var hand := "左鍵" if Catalog.PRIMARY_WEAPONS.has(id) else "右鍵"
+			return "%s換上：%s" % [hand, Catalog.item_name(id)]
 	RunState.add_energy(40.0)
 	return "電量回復 40"

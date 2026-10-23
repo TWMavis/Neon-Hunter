@@ -1,12 +1,12 @@
 class_name WeaponManager
 extends Node2D
 ## 左鍵 = 主武器（按住連射，負責輸出）；右鍵 = 副武器（冷卻制，負責「抓住」獵物）。
-## 武器由這次攀登選的武器決定（ClimbState.primary / secondary）。
+## 開場只有小刀、沒有右鍵武器；升級卡、商店拿到槍後換上（ClimbState.primary / secondary）。
 
 const JAM_AFTER := 3.0     # 過熱槍管：連射超過 3 秒卡彈
 const JAM_TIME := 1.5
 const FIRE_SOUNDS := {
-	&"pulse_rifle": "shoot", &"shotgun": "shotgun", &"homing_darts": "dart",
+	&"knife": "slash", &"pulse_rifle": "shoot", &"shotgun": "shotgun", &"homing_darts": "dart",
 	&"em_net": "net", &"grapple": "hook", &"emp_grenade": "net",
 }
 
@@ -17,14 +17,32 @@ var _held := 0.0
 
 
 func _ready() -> void:
-	primary = create(ClimbState.primary)
-	secondary = create(ClimbState.secondary)
-	add_child(primary)
-	add_child(secondary)
+	_sync()
+	ClimbState.loadout_changed.connect(_sync)
+
+
+## 換武器（升級卡、商店）後，重建對應的武器節點
+func _sync() -> void:
+	if primary == null or primary.id != ClimbState.primary:
+		if primary:
+			primary.queue_free()
+		primary = create(ClimbState.primary)
+		add_child(primary)
+	var want := ClimbState.secondary
+	if (secondary == null and want != &"") or (secondary and secondary.id != want):
+		if secondary:
+			secondary.queue_free()
+		secondary = create(want) if want != &"" else null
+		if secondary:
+			add_child(secondary)
 
 
 static func create(id: StringName) -> Weapon:
 	match id:
+		&"knife":
+			return Knife.new()
+		&"pulse_rifle":
+			return PulseRifle.new()
 		&"shotgun":
 			return Shotgun.new()
 		&"homing_darts":
@@ -35,7 +53,7 @@ static func create(id: StringName) -> Weapon:
 			return EmpGrenade.new()
 		&"em_net":
 			return EmNet.new()
-	return PulseRifle.new()
+	return Knife.new()
 
 
 func _physics_process(delta: float) -> void:
@@ -55,7 +73,7 @@ func _physics_process(delta: float) -> void:
 				Audio.sfx(FIRE_SOUNDS.get(primary.id, "shoot"), -3.0)
 	else:
 		_held = 0.0
-	if Input.is_action_just_pressed("attack_secondary"):
+	if Input.is_action_just_pressed("attack_secondary") and secondary:
 		if secondary.try_fire(origin, player.aim_dir):
 			Audio.sfx(FIRE_SOUNDS.get(secondary.id, "net"))
 		else:

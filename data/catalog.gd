@@ -2,12 +2,18 @@ class_name Catalog
 extends RefCounted
 ## 資料表：晶片、共鳴、被動技能、武器。調平衡改這裡。
 
+## 開場唯一的武器；槍要在升級、寶箱、商店拿到
+const STARTER_WEAPON := &"knife"
+const STARTER_INFO := ["小刀", "近身揮砍，傷害高但要貼身"]
+
+## 可以取得的左鍵武器（取得後取代目前的左鍵武器）
 const PRIMARY_WEAPONS := {
 	&"pulse_rifle": ["脈衝步槍", "中距離連射，最平衡"],
 	&"shotgun": ["霰彈槍", "近距離高傷害，擊退能把獵物推進死角"],
 	&"homing_darts": ["追蹤飛鏢", "傷害低但會轉彎，專打逃跑中的目標"],
 }
 
+## 可以取得的右鍵武器（開場沒有右鍵武器）
 const SECONDARY_WEAPONS := {
 	&"em_net": ["電磁網", "命中後定身 2 秒"],
 	&"grapple": ["鉤爪砲", "打中獵物把牠拉過來；打中牆壁把自己拉過去"],
@@ -28,8 +34,8 @@ const MOVEMENT_INFO := ["移動", "跳躍與衝刺"]
 ## 這些數值不管插在哪個技能上都是全身生效
 const BODY_KEYS: Array[StringName] = [&"pickup_range", &"energy_max", &"energy_drain", &"kill_energy", &"damage_taken"]
 
-const PRIMARY: Array[StringName] = [&"pulse_rifle", &"shotgun", &"homing_darts"]
-const DAMAGE_SKILLS: Array[StringName] = [&"pulse_rifle", &"shotgun", &"homing_darts", &"grapple", &"emp_grenade", &"drone", &"plasma_aura"]
+const PRIMARY: Array[StringName] = [&"knife", &"pulse_rifle", &"shotgun", &"homing_darts"]
+const DAMAGE_SKILLS: Array[StringName] = [&"knife", &"pulse_rifle", &"shotgun", &"homing_darts", &"grapple", &"emp_grenade", &"drone", &"plasma_aura"]
 const COOLDOWN_SKILLS: Array[StringName] = [&"em_net", &"grapple", &"emp_grenade", &"drone", &"plasma_aura", &"radar", &"shield"]
 
 static var _chips: Dictionary = {}
@@ -53,6 +59,8 @@ static func synergies() -> Array[SynergyData]:
 
 
 static func item_name(id: StringName) -> String:
+	if id == STARTER_WEAPON:
+		return STARTER_INFO[0]
 	if id == MOVEMENT:
 		return MOVEMENT_INFO[0]
 	for table: Dictionary in [PRIMARY_WEAPONS, SECONDARY_WEAPONS, PASSIVES]:

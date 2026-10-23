@@ -121,6 +121,9 @@ func _draw() -> void:
 		_skill_pips(Vector2(82, view.y - 26), weapons.primary.id)
 		_text(font, Vector2(8, view.y - 33), "移動 跳躍・衝刺", 10, YELLOW)
 		_skill_pips(Vector2(82, view.y - 39), Catalog.MOVEMENT)
+		if weapons.secondary == null:
+			_text(font, Vector2(8, view.y - 7), "右鍵（還沒有武器）", 10, MAGENTA.darkened(0.5))
+	if weapons and weapons.secondary:
 		var sec := weapons.secondary
 		var ready_ratio := 1.0 - sec.cooldown_ratio()
 		_text(font, Vector2(8, view.y - 7), "右鍵 " + sec.display_name, 10, MAGENTA)

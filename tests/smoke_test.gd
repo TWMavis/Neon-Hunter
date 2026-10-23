@@ -22,6 +22,7 @@ func _ready() -> void:
 	await _test_shop()
 	await _test_pickup_falls()
 	await _test_counterattacks()
+	await _test_knife_start()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -513,4 +514,38 @@ func _test_counterattacks() -> void:
 	await _frames(5)
 	var lobs := game.get_tree().get_nodes_in_group("projectiles")[0].get_children().filter(func(n: Node) -> bool: return n is EnemyShot and (n as EnemyShot).explode_radius > 0.0).size()
 	_check(lobs >= 3, "boss throws 3 exploding junk shots (%d)" % lobs)
+	await _end(game)
+
+
+func _test_knife_start() -> void:
+	print("knife start:")
+	ClimbState.new_climb()
+	_check(ClimbState.primary == &"knife" and ClimbState.secondary == &"", "a new climb starts with only the knife")
+	_check(not ClimbState.skills().has(&""), "empty right-click slot is not a skill")
+	var cards := ClimbState.roll_level_up_cards()
+	_check(cards.any(func(c: Dictionary) -> bool: return c["type"] == "weapon"), "level-up always offers a gun while holding only the knife")
+	var game := await _new_game()
+	_check(game.player.weapons.primary is Knife and game.player.weapons.secondary == null, "player holds the knife, right click empty")
+	var rat := _prey_of(game, Prey.Kind.RAT)
+	if rat:
+		game.player.global_position = rat.global_position + Vector2(-14, -4)
+		var hp := rat.hp
+		var aim := game.player.global_position.direction_to(rat.global_position)
+		game.player.weapons.primary.try_fire(game.player.global_position + aim * 10.0, aim)
+		await _frames(2)
+		_check(not is_instance_valid(rat) or rat.hp < hp, "knife slash hits a rat next to you")
+	ClimbState.owned[&"kinetic"] = 0
+	ClimbState.equip(&"kinetic", &"knife")
+	ClimbState.apply_card({"type": "weapon", "id": &"shotgun"})
+	await _frames(2)
+	_check(ClimbState.primary == &"shotgun" and game.player.weapons.primary is Shotgun, "picking a gun card swaps the knife for the shotgun")
+	_check(ClimbState.chip_on(&"shotgun", &"kinetic") and ClimbState.capacity_of(&"shotgun") == 3, "chips and capacity move to the new gun")
+	ClimbState.apply_card({"type": "weapon", "id": &"em_net"})
+	await _frames(2)
+	_check(game.player.weapons.secondary is EmNet, "picking a right-click weapon fills the empty slot")
+	ClimbState.credits = 100
+	ClimbState.open_shop()
+	var w := ClimbState.shop_weapon
+	_check(w != &"" and w != &"shotgun" and w != &"em_net", "shop sells a weapon you don't have (%s)" % w)
+	_check(ClimbState.buy_weapon() != "" and (ClimbState.primary == w or ClimbState.secondary == w), "buy the weapon from the shop")
 	await _end(game)

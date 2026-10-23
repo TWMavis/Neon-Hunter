@@ -61,6 +61,8 @@ func _make_card(i: int, card: Dictionary) -> Button:
 	var accent := UiTheme.CYAN
 	if card["type"] == "chip" or card["type"] == "upgrade":
 		accent = Catalog.chip(card["id"]).rarity_color()
+	elif card["type"] == "weapon":
+		accent = UiTheme.YELLOW
 	elif card["type"] == "passive":
 		accent = UiTheme.GREEN
 	col.add_child(UiTheme.label("%d" % (i + 1), UiTheme.DIM, 9))
