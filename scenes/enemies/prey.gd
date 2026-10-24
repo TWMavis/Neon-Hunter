@@ -659,8 +659,8 @@ func _fight_back(delta: float, to_player: Vector2, dist: float) -> void:
 		return
 	match kind:
 		Kind.DRONE:
-			# 轟炸：玩家在正下方就丟炸彈
-			if _attack_timer <= 0.0 and to_player.y > 16.0 and absf(to_player.x) < 36.0 and dist < 170.0:
+			# 轟炸：玩家在正下方就丟炸彈（玩家潛行時不轟炸）
+			if not player.stealthed and _attack_timer <= 0.0 and to_player.y > 16.0 and absf(to_player.x) < 36.0 and dist < 170.0:
 				_attack_timer = 2.5
 				_shoot(Vector2(velocity.x * 0.3, 30.0), 8.0, Color("ffe14d"), 500.0, 24.0, 2.5, 3.0)
 		Kind.JUMPER:

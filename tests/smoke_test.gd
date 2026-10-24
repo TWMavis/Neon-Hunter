@@ -28,6 +28,7 @@ func _ready() -> void:
 	await _test_stealth()
 	await _test_stealth_drain()
 	await _test_vision()
+	await _test_drone_holds_fire_in_stealth()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -739,4 +740,34 @@ func _test_vision() -> void:
 	rat3._wander_timer = 99.0
 	await _frames(5)
 	_check(rat3.state == Prey.State.WANDER, "sneaking right behind it (20px) it does not notice")
+	await _end(game)
+
+
+func _test_drone_holds_fire_in_stealth() -> void:
+	print("drone vs stealth:")
+	ClimbState.new_climb()
+	var game := await _new_game()
+	for node in game._enemies.get_children():
+		node.queue_free()
+	game.floor_data.rat_count = 0
+	game.floor_data.drone_count = 0
+	await _frames(2)
+	var drone := game._spawn_prey(Prey.Kind.DRONE, game.player.global_position + Vector2(0, -60))
+	await _frames(2)
+	drone._enter(Prey.State.FLEE)
+	game.player.since_attack = Player.STEALTH_DELAY
+	await _frames(2)
+	for i in 30:
+		drone.global_position = game.player.global_position + Vector2(0, -60)
+		drone._attack_timer = 0.0
+		await _frames(1)
+	var bombs := game.get_tree().get_nodes_in_group("projectiles")[0].get_children().filter(func(n: Node) -> bool: return n is EnemyShot).size()
+	_check(bombs == 0, "drones do not bomb a stealthed player")
+	game.player.break_stealth()
+	for i in 5:
+		drone.global_position = game.player.global_position + Vector2(0, -60)
+		drone._attack_timer = 0.0
+		await _frames(1)
+	bombs = game.get_tree().get_nodes_in_group("projectiles")[0].get_children().filter(func(n: Node) -> bool: return n is EnemyShot).size()
+	_check(bombs >= 1, "out of stealth they bomb again")
 	await _end(game)
