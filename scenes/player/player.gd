@@ -20,8 +20,7 @@ const DASH_TIME := 0.14
 const DASH_COOLDOWN := 0.45
 const DROP_THROUGH_TIME := 0.2
 const HIT_INVULN_TIME := 0.7
-const STEALTH_SPEED_MULT := 0.5       # 潛行時的移動速度
-const STEALTH_COOLDOWN := 0.6         # 潛行解除後多久才能再潛行
+const STEALTH_DELAY := 3.0            # 多久沒攻擊就自動進入潛行
 const STEALTH_SENSE_MULT := 0.35      # 潛行時獵物的感知範圍倍率
 const WALL_SLIDE_SPEED := 60.0
 const WALL_JUMP_PUSH := 170.0
@@ -55,8 +54,8 @@ var _drop_time := 0.0
 var _grapple_time := 0.0
 var _grapple_point := Vector2.ZERO
 var _anim_t := 0.0
-var stealthed := false                # 潛行中（按住潛行鍵、站在地上）
-var _stealth_cd := 0.0
+var stealthed := false                # 潛行中（3 秒沒攻擊、沒被打中就自動進入）
+var since_attack := 0.0               # 距離上次攻擊或被打中的秒數
 
 
 func _ready() -> void:
@@ -102,6 +101,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_dash_cooldown = maxf(_dash_cooldown - delta, 0.0)
 	_invuln = maxf(_invuln - delta, 0.0)
+	_update_stealth(delta)
 
 	if GameInput.using_gamepad:
 		var stick: Vector2 = GameInput.gamepad_aim()
@@ -151,9 +151,7 @@ func _physics_process(delta: float) -> void:
 
 	var input := Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
 
-	_update_stealth(delta)
 	if Input.is_action_just_pressed("dash") and _dash_cooldown <= 0.0 and _dash_charges > 0:
-		break_stealth()
 		_start_dash(input)
 		return
 
@@ -177,8 +175,6 @@ func _physics_process(delta: float) -> void:
 		collision_mask &= ~Layers.ONEWAY
 		_drop_time = DROP_THROUGH_TIME
 
-	if _jump_buffer > 0.0 and stealthed:
-		break_stealth()   # 跳躍會解除潛行
 	if _jump_buffer > 0.0:
 		if _coyote > 0.0:
 			_jump(Vector2(velocity.x, JUMP_VELOCITY * _jump_mult()))
@@ -192,29 +188,22 @@ func _physics_process(delta: float) -> void:
 
 	var accel := GROUND_ACCEL if is_on_floor() else AIR_ACCEL
 	var speed := RUN_SPEED * (1.0 + ClimbState.skill_stat(Catalog.MOVEMENT, &"run_speed"))
-	if stealthed:
-		speed *= STEALTH_SPEED_MULT
 	velocity.x = move_toward(velocity.x, input.x * speed, accel * delta)
 	move_and_slide()
 
 
-## 按住潛行鍵、站在地上就進入潛行；放開或離地就解除
+## 被動潛行：3 秒沒攻擊、沒被打中就自動進入
 func _update_stealth(delta: float) -> void:
-	_stealth_cd = maxf(_stealth_cd - delta, 0.0)
-	var want := Input.is_action_pressed("stealth") and is_on_floor() and _grapple_time <= 0.0
-	if stealthed and not want:
-		break_stealth()
-	elif not stealthed and want and _stealth_cd <= 0.0:
+	since_attack += delta
+	if not stealthed and since_attack >= STEALTH_DELAY:
 		stealthed = true
 		Audio.sfx("stealth", -6.0)
 
 
-## 解除潛行（跳躍、衝刺、開槍、近戰出手、被打中）；之後要等一下才能再潛行
+## 攻擊或被打中：解除潛行，重新計算 3 秒
 func break_stealth() -> void:
-	if not stealthed:
-		return
 	stealthed = false
-	_stealth_cd = STEALTH_COOLDOWN
+	since_attack = 0.0
 
 
 ## 獵物的感知範圍倍率（潛行時縮小）

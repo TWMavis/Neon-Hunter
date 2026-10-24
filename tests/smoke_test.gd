@@ -155,7 +155,8 @@ func _test_level_up() -> void:
 	game.picker._choose(0)
 	await _frames(2)
 	var gained := ClimbState.owned.size() + ClimbState.passives.size()
-	_check(gained == 1, "picked card gave a chip or passive")
+	var swapped := ClimbState.primary != &"pulse_rifle" or ClimbState.secondary != &"em_net"
+	_check(gained == 1 or swapped, "picked card gave a chip, passive, or weapon")
 	_check(not get_tree().paused, "game resumes after picking")
 	game.open_chest()
 	await _frames(2)
@@ -637,22 +638,21 @@ func _test_stealth() -> void:
 	var player := game.player
 	player.global_position = game.elevator.global_position + Vector2(-60, -12)
 	await _frames(20)
-	Input.action_press(&"stealth")
-	await _frames(3)
-	_check(player.stealthed, "holding C on the ground enters stealth")
+	_check(not player.stealthed, "not in stealth right after the floor starts")
+	await _frames(170)
+	_check(player.stealthed, "3 seconds without attacking: stealth starts by itself")
 	var rat := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(70, 10))
 	rat._dir = -1.0   # 面向玩家
 	await _frames(10)
 	_check(rat.state == Prey.State.WANDER, "a rat 70px away does not notice a stealthed player")
 	_check(rat.is_suspicious(), "the rat shows '?'")
-	Input.action_release(&"stealth")
+	player.break_stealth()   # 等於出手攻擊
 	await _frames(5)
-	_check(not player.stealthed and rat.state == Prey.State.FLEE, "leaving stealth: the rat notices and flees")
+	_check(not player.stealthed and rat.state == Prey.State.FLEE, "attacking ends stealth: the rat notices and flees")
 	rat.queue_free()
 
-	await _frames(40)
-	Input.action_press(&"stealth")
-	await _frames(3)
+	player.since_attack = Player.STEALTH_DELAY
+	await _frames(2)
 	var target := game._spawn_prey(Prey.Kind.ELITE, player.global_position + Vector2(18, 4))
 	await _frames(3)
 	target._dir = -1.0   # 面向玩家（不是背後）
@@ -671,13 +671,14 @@ func _test_stealth() -> void:
 	_check(is_equal_approx(hp - target.hp, 2.0 * 1.5), "hitting from behind does x1.5 (%.1f)" % (hp - target.hp))
 	target.queue_free()
 
-	await _frames(40)
-	_check(player.stealthed, "still holding C: stealth comes back after the cooldown")
+	await _frames(185)
+	_check(player.stealthed, "stealth comes back after another 3 seconds without attacking")
 	Input.action_press(&"jump")
 	await _frames(2)
 	Input.action_release(&"jump")
-	_check(not player.stealthed, "jumping breaks stealth")
-	Input.action_release(&"stealth")
+	_check(player.stealthed, "jumping does not break passive stealth")
+	player.take_hit(1.0, player.global_position + Vector2(10, 0))
+	_check(not player.stealthed, "getting hit breaks stealth")
 	await _end(game)
 
 
@@ -689,13 +690,12 @@ func _test_stealth_drain() -> void:
 	var e0 := RunState.energy
 	await _frames(60)
 	var normal := e0 - RunState.energy
-	Input.action_press(&"stealth")
-	await _frames(5)
+	game.player.since_attack = Player.STEALTH_DELAY
+	await _frames(2)
 	_check(game.player.stealthed, "sneaking")
 	e0 = RunState.energy
 	await _frames(60)
 	var sneaking := e0 - RunState.energy
-	Input.action_release(&"stealth")
 	_check(absf(sneaking - normal * 0.5) < 0.2, "stealth halves energy drain (%.2f vs %.2f per second)" % [sneaking, normal])
 	await _end(game)
 
@@ -732,12 +732,11 @@ func _test_vision() -> void:
 	await _frames(5)
 	_check(rat2.state == Prey.State.FLEE, "walking right behind it (30px) it hears your footsteps")
 	rat2.queue_free()
-	Input.action_press(&"stealth")
-	await _frames(5)
+	player.since_attack = Player.STEALTH_DELAY
+	await _frames(2)
 	var rat3 := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(20, 10))
 	rat3._dir = 1.0
 	rat3._wander_timer = 99.0
 	await _frames(5)
 	_check(rat3.state == Prey.State.WANDER, "sneaking right behind it (20px) it does not notice")
-	Input.action_release(&"stealth")
 	await _end(game)

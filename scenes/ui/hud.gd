@@ -119,6 +119,9 @@ func _draw() -> void:
 		_skill_pips(Vector2(82, view.y - 39), Catalog.MOVEMENT)
 		if game.player.stealthed:
 			_text(font, Vector2(8, view.y - 46), "潛行中　近戰 ×2.5", 10, Color(0.75, 0.55, 1.0))
+		else:
+			var left := maxf(Player.STEALTH_DELAY - game.player.since_attack, 0.0)
+			_text(font, Vector2(8, view.y - 46), "%.1f 秒後潛行" % left, 9, Color(0.55, 0.45, 0.75))
 		if weapons.secondary == null:
 			_text(font, Vector2(8, view.y - 7), "右鍵（還沒有武器）", 10, MAGENTA.darkened(0.5))
 	if weapons and weapons.secondary:

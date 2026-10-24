@@ -22,7 +22,7 @@ func _ready() -> void:
 		game.player.global_position = Vector2(150, 516)
 	await get_tree().create_timer(0.3).timeout
 	if OS.get_cmdline_user_args().has("stealth"):
-		Input.action_press(&"stealth")
+		game.player.since_attack = Player.STEALTH_DELAY
 		game.player.global_position = game.elevator.global_position + Vector2(-80, -12)
 		var watcher := game._spawn_prey(Prey.Kind.RAT, game.player.global_position + Vector2(70, 10))
 		watcher._dir = -1.0
