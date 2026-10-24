@@ -746,28 +746,33 @@ func _test_vision() -> void:
 func _test_drone_holds_fire_in_stealth() -> void:
 	print("drone vs stealth:")
 	ClimbState.new_climb()
+	ClimbState.passives.append(&"drone")    # 玩家的僚機無人機
 	var game := await _new_game()
 	for node in game._enemies.get_children():
 		node.queue_free()
 	game.floor_data.rat_count = 0
 	game.floor_data.drone_count = 0
-	await _frames(2)
-	var drone := game._spawn_prey(Prey.Kind.DRONE, game.player.global_position + Vector2(0, -60))
-	await _frames(2)
-	drone._enter(Prey.State.FLEE)
 	game.player.since_attack = Player.STEALTH_DELAY
 	await _frames(2)
-	for i in 30:
+	var shots := func() -> Array:
+		return game.get_tree().get_nodes_in_group("projectiles")[0].get_children()
+	var drone := game._spawn_prey(Prey.Kind.DRONE, game.player.global_position + Vector2(0, -60))
+	drone._wander_timer = 99.0
+	await _frames(2)
+	for i in 40:
 		drone.global_position = game.player.global_position + Vector2(0, -60)
 		drone._attack_timer = 0.0
 		await _frames(1)
-	var bombs := game.get_tree().get_nodes_in_group("projectiles")[0].get_children().filter(func(n: Node) -> bool: return n is EnemyShot).size()
-	_check(bombs == 0, "drones do not bomb a stealthed player")
-	game.player.break_stealth()
+	_check(drone.state == Prey.State.WANDER, "the drone has not noticed the stealthed player below it")
+	_check(not shots.call().any(func(n: Node) -> bool: return n is EnemyShot), "a drone that has not noticed you does not bomb")
+	_check(not shots.call().any(func(n: Node) -> bool: return n is Projectile), "your wingman drone holds fire while you are in stealth")
+	drone._enter(Prey.State.FLEE)   # 被發現了
 	for i in 5:
 		drone.global_position = game.player.global_position + Vector2(0, -60)
 		drone._attack_timer = 0.0
 		await _frames(1)
-	bombs = game.get_tree().get_nodes_in_group("projectiles")[0].get_children().filter(func(n: Node) -> bool: return n is EnemyShot).size()
-	_check(bombs >= 1, "out of stealth they bomb again")
+	_check(shots.call().any(func(n: Node) -> bool: return n is EnemyShot), "once it has noticed you it bombs, even in stealth")
+	game.player.break_stealth()
+	await _frames(60)
+	_check(shots.call().any(func(n: Node) -> bool: return n is Projectile), "out of stealth your wingman fires again")
 	await _end(game)

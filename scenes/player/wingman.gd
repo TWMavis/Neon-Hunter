@@ -21,7 +21,7 @@ func _physics_process(delta: float) -> void:
 	global_position = global_position.lerp(anchor, minf(1.0, 8.0 * delta))
 
 	_cooldown -= delta
-	if _cooldown <= 0.0:
+	if _cooldown <= 0.0 and not owner_player.stealthed:   # 潛行時不開火，免得嚇跑獵物
 		var target := _nearest_prey()
 		if target:
 			_cooldown = FIRE_INTERVAL / (1.0 + ClimbState.skill_stat(&"drone", &"rate"))
