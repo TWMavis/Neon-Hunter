@@ -26,6 +26,7 @@ func _ready() -> void:
 	await _test_shop_scrolls()
 	await _test_settings_and_gamepad()
 	await _test_stealth()
+	await _test_stealth_drain()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -674,4 +675,23 @@ func _test_stealth() -> void:
 	Input.action_release(&"jump")
 	_check(not player.stealthed, "jumping breaks stealth")
 	Input.action_release(&"stealth")
+	await _end(game)
+
+
+func _test_stealth_drain() -> void:
+	print("stealth drain:")
+	ClimbState.new_climb()
+	var game := await _new_game()
+	await _frames(20)
+	var e0 := RunState.energy
+	await _frames(60)
+	var normal := e0 - RunState.energy
+	Input.action_press(&"stealth")
+	await _frames(5)
+	_check(game.player.stealthed, "sneaking")
+	e0 = RunState.energy
+	await _frames(60)
+	var sneaking := e0 - RunState.energy
+	Input.action_release(&"stealth")
+	_check(absf(sneaking - normal * 0.5) < 0.2, "stealth halves energy drain (%.2f vs %.2f per second)" % [sneaking, normal])
 	await _end(game)

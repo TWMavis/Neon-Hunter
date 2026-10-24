@@ -8,6 +8,7 @@ const PURGE_TINT := Color(1.0, 0.35, 0.4)
 const OVERCLOCK_TINT := Color(1.0, 0.75, 0.3)
 const TAB_HOLD_TIME := 0.5
 const FLOOR_CLEAR_CREDITS := 20
+const STEALTH_DRAIN_MULT := 0.5
 const SPAWN_MIN_DISTANCE := 200.0
 const GRAPH_UPDATE_INTERVAL := 0.3
 const MAX_REPLICATORS := 10
@@ -247,6 +248,8 @@ func _physics_process(delta: float) -> void:
 	var drain := floor_data.energy_drain * maxf(1.0 + ClimbState.stat(&"energy_drain"), 0.2)
 	if ClimbState.is_overloaded():
 		drain *= 2.0  # 超載：電量消耗加倍
+	if player.stealthed:
+		drain *= STEALTH_DRAIN_MULT  # 潛行：電量消耗減半
 	if not RunState.overclocked:
 		RunState.add_energy(-drain * delta)  # 超頻中電量不會自然消耗
 
