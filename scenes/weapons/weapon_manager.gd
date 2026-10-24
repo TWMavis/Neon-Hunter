@@ -71,10 +71,13 @@ func _physics_process(delta: float) -> void:
 		else:
 			if primary.try_fire(origin, player.aim_dir):
 				Audio.sfx(FIRE_SOUNDS.get(primary.id, "shoot"), -3.0)
+				if primary.id != &"knife":
+					player.break_stealth()   # 槍聲會解除潛行（小刀自己處理潛行一擊）
 	else:
 		_held = 0.0
 	if Input.is_action_just_pressed("attack_secondary") and secondary:
 		if secondary.try_fire(origin, player.aim_dir):
 			Audio.sfx(FIRE_SOUNDS.get(secondary.id, "net"))
+			player.break_stealth()
 		else:
 			Audio.sfx("denied", -6.0)

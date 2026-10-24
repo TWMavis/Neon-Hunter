@@ -435,6 +435,9 @@ func _make_sfx() -> void:
 	_save("charge", _mix([_sweep(0.35, 70.0, 150.0, "saw", 0.4), _noise(0.35, 0.25, 1200.0)]))
 	_save("blink", _sweep(0.12, 2200.0, 500.0, "sine", 0.3))
 	_save("mine", _notes([1800.0, 1800.0], 0.03, "square", 0.2))
+	_save("stealth", _sweep(0.25, 500.0, 220.0, "sine", 0.2))
+	_save("alert", _notes([1400.0, 1900.0], 0.06, "square", 0.25))
+	_save("backstab", _mix([_noise(0.14, 0.5, 8000.0, true), _sweep(0.18, 1400.0, 200.0, "saw", 0.3)]))
 	_save("slash", _mix([_noise(0.1, 0.45, 7000.0, true), _sweep(0.08, 900.0, 300.0, "triangle", 0.2)]))
 
 

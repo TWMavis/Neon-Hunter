@@ -1,7 +1,7 @@
 extends Node
 ## 輸入設定：鍵盤滑鼠與手把。啟動時註冊預設按鍵，再套用玩家在設定畫面改過的按鍵（Settings）。
-## 鍵盤：WASD 移動、空白鍵跳、Shift 衝刺、滑鼠瞄準與攻擊、長按 Tab 晶片頁面、長按 F 搭電梯
-## 手把：左搖桿移動、右搖桿瞄準、A 跳、RB 衝刺、RT／LT 左右鍵攻擊、長按 X 搭電梯、長按 Back 晶片頁面、Start 重新開始
+## 鍵盤：WASD 移動、空白鍵跳、Shift 衝刺、按住 C 潛行、滑鼠瞄準與攻擊、長按 Tab 晶片頁面、長按 F 搭電梯
+## 手把：左搖桿移動、右搖桿瞄準、A 跳、RB 衝刺、按住 LB 潛行、RT／LT 左右鍵攻擊、長按 X 搭電梯、長按 Back 晶片頁面、Start 重新開始
 
 const DEADZONE := 0.25
 
@@ -25,7 +25,8 @@ func register_defaults() -> void:
 	_bind(&"chip_menu", [KEY_TAB], [JOY_BUTTON_BACK], [])
 	_bind(&"interact", [KEY_F], [JOY_BUTTON_X], [])
 	_bind(&"attack_primary", [], [], [[JOY_AXIS_TRIGGER_RIGHT, 1.0]])
-	_bind(&"attack_secondary", [], [JOY_BUTTON_LEFT_SHOULDER], [[JOY_AXIS_TRIGGER_LEFT, 1.0]])
+	_bind(&"attack_secondary", [], [], [[JOY_AXIS_TRIGGER_LEFT, 1.0]])
+	_bind(&"stealth", [KEY_C], [JOY_BUTTON_LEFT_SHOULDER], [])
 	_add_mouse(&"attack_primary", MOUSE_BUTTON_LEFT)
 	_add_mouse(&"attack_secondary", MOUSE_BUTTON_RIGHT)
 	_bind(&"aim_left", [], [], [[JOY_AXIS_RIGHT_X, -1.0]])

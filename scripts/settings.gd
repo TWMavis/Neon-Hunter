@@ -10,7 +10,7 @@ const DEFAULT_VOLUME := {"Master": 0.8, "Music": 0.7, "SFX": 0.8}
 ## 可以在設定畫面改鍵的動作（滑鼠攻擊、手把不在這裡改）
 const REBINDABLE := {
 	&"move_left": "左移", &"move_right": "右移", &"move_up": "上", &"move_down": "下／從平台下跳",
-	&"jump": "跳躍", &"dash": "衝刺", &"interact": "搭電梯（按住）", &"chip_menu": "晶片頁面（按住）",
+	&"jump": "跳躍", &"dash": "衝刺", &"stealth": "潛行（按住）", &"interact": "搭電梯（按住）", &"chip_menu": "晶片頁面（按住）",
 }
 
 static var volumes: Dictionary = DEFAULT_VOLUME.duplicate()

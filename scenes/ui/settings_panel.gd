@@ -5,7 +5,7 @@ extends Control
 
 signal closed
 
-const GAMEPAD_HELP := "手把：左搖桿移動、右搖桿瞄準、A 跳躍、RB 衝刺、RT／LT 左右鍵攻擊、長按 X 搭電梯、長按 Back 晶片頁面、Start 重新開始"
+const GAMEPAD_HELP := "手把：左搖桿移動、右搖桿瞄準、A 跳躍、RB 衝刺、按住 LB 潛行、RT／LT 左右鍵攻擊、長按 X 搭電梯、長按 Back 晶片頁面、Start 重新開始"
 
 var _sliders: Dictionary = {}       # bus -> HSlider
 var _key_buttons: Dictionary = {}   # action -> Button

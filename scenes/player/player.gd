@@ -20,6 +20,9 @@ const DASH_TIME := 0.14
 const DASH_COOLDOWN := 0.45
 const DROP_THROUGH_TIME := 0.2
 const HIT_INVULN_TIME := 0.7
+const STEALTH_SPEED_MULT := 0.5       # 潛行時的移動速度
+const STEALTH_COOLDOWN := 0.6         # 潛行解除後多久才能再潛行
+const STEALTH_SENSE_MULT := 0.35      # 潛行時獵物的感知範圍倍率
 const WALL_SLIDE_SPEED := 60.0
 const WALL_JUMP_PUSH := 170.0
 const JETPACK_TIME := 1.0
@@ -52,6 +55,8 @@ var _drop_time := 0.0
 var _grapple_time := 0.0
 var _grapple_point := Vector2.ZERO
 var _anim_t := 0.0
+var stealthed := false                # 潛行中（按住潛行鍵、站在地上）
+var _stealth_cd := 0.0
 
 
 func _ready() -> void:
@@ -146,7 +151,9 @@ func _physics_process(delta: float) -> void:
 
 	var input := Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
 
+	_update_stealth(delta)
 	if Input.is_action_just_pressed("dash") and _dash_cooldown <= 0.0 and _dash_charges > 0:
+		break_stealth()
 		_start_dash(input)
 		return
 
@@ -170,6 +177,8 @@ func _physics_process(delta: float) -> void:
 		collision_mask &= ~Layers.ONEWAY
 		_drop_time = DROP_THROUGH_TIME
 
+	if _jump_buffer > 0.0 and stealthed:
+		break_stealth()   # 跳躍會解除潛行
 	if _jump_buffer > 0.0:
 		if _coyote > 0.0:
 			_jump(Vector2(velocity.x, JUMP_VELOCITY * _jump_mult()))
@@ -182,8 +191,35 @@ func _physics_process(delta: float) -> void:
 		velocity.y *= JUMP_CUT
 
 	var accel := GROUND_ACCEL if is_on_floor() else AIR_ACCEL
-	velocity.x = move_toward(velocity.x, input.x * RUN_SPEED * (1.0 + ClimbState.skill_stat(Catalog.MOVEMENT, &"run_speed")), accel * delta)
+	var speed := RUN_SPEED * (1.0 + ClimbState.skill_stat(Catalog.MOVEMENT, &"run_speed"))
+	if stealthed:
+		speed *= STEALTH_SPEED_MULT
+	velocity.x = move_toward(velocity.x, input.x * speed, accel * delta)
 	move_and_slide()
+
+
+## 按住潛行鍵、站在地上就進入潛行；放開或離地就解除
+func _update_stealth(delta: float) -> void:
+	_stealth_cd = maxf(_stealth_cd - delta, 0.0)
+	var want := Input.is_action_pressed("stealth") and is_on_floor() and _grapple_time <= 0.0
+	if stealthed and not want:
+		break_stealth()
+	elif not stealthed and want and _stealth_cd <= 0.0:
+		stealthed = true
+		Audio.sfx("stealth", -6.0)
+
+
+## 解除潛行（跳躍、衝刺、開槍、近戰出手、被打中）；之後要等一下才能再潛行
+func break_stealth() -> void:
+	if not stealthed:
+		return
+	stealthed = false
+	_stealth_cd = STEALTH_COOLDOWN
+
+
+## 獵物的感知範圍倍率（潛行時縮小）
+func sense_mult() -> float:
+	return STEALTH_SENSE_MULT if stealthed else 1.0
 
 
 func _jump(new_velocity: Vector2) -> void:
@@ -235,6 +271,7 @@ func take_hit(amount: float, from: Vector2) -> void:
 	if dead or _invuln > 0.0 or is_dashing():
 		return  # 衝刺中無敵
 	_invuln = HIT_INVULN_TIME
+	break_stealth()
 	if passives.consume_shield():
 		Audio.sfx("shield")
 		return
@@ -258,7 +295,12 @@ func _draw() -> void:
 		frame = 3
 	elif absf(velocity.x) > 20.0:
 		frame = 1 + int(_anim_t * 10.0) % 2
-	Art.draw(self, "player", 5, frame, Vector2.ZERO, flip)
+	if stealthed:
+		# 潛行：半透明、變暗，腳下畫出大概的「被發現距離」
+		draw_arc(Vector2(0.0, BODY_SIZE.y * 0.5), 130.0 * STEALTH_SENSE_MULT, PI, TAU, 24, Color(0.6, 0.4, 1.0, 0.35), 1.0)
+		Art.draw(self, "player", 5, frame, Vector2.ZERO, flip, Color(0.55, 0.5, 0.9, 0.5))
+	else:
+		Art.draw(self, "player", 5, frame, Vector2.ZERO, flip)
 	var shoulder := Vector2(0.0, -2.0)
 	var gun := Color("ff2244") if weapons and weapons.jam_left > 0.0 else Color("e6f7ff")
 	draw_line(shoulder, shoulder + aim_dir * 11.0, gun, 2.0)

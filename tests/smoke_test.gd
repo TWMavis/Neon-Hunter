@@ -25,6 +25,7 @@ func _ready() -> void:
 	await _test_knife_start()
 	await _test_shop_scrolls()
 	await _test_settings_and_gamepad()
+	await _test_stealth()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -614,3 +615,63 @@ func _test_settings_and_gamepad() -> void:
 	Settings.volumes = old_volumes
 	Settings.keys = old_keys
 	Settings.save()
+
+
+func _test_stealth() -> void:
+	print("stealth:")
+	ClimbState.new_climb()
+	get_tree().paused = false
+	var game: Game = load("res://scenes/game/game.tscn").instantiate()
+	game.auto_advance = false
+	game.map_override = Section1Maps.floors()[0]
+	game.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(game)
+	await _frames(10)
+	for node in game._enemies.get_children():
+		node.queue_free()
+	game.floor_data.rat_count = 0
+	game.floor_data.drone_count = 0
+	var player := game.player
+	player.global_position = game.elevator.global_position + Vector2(-60, -12)
+	await _frames(20)
+	Input.action_press(&"stealth")
+	await _frames(3)
+	_check(player.stealthed, "holding C on the ground enters stealth")
+	var rat := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(70, 10))
+	await _frames(10)
+	_check(rat.state == Prey.State.WANDER, "a rat 70px away does not notice a stealthed player")
+	_check(rat.is_suspicious(), "the rat shows '?'")
+	Input.action_release(&"stealth")
+	await _frames(5)
+	_check(not player.stealthed and rat.state == Prey.State.FLEE, "leaving stealth: the rat notices and flees")
+	rat.queue_free()
+
+	await _frames(40)
+	Input.action_press(&"stealth")
+	await _frames(3)
+	var target := game._spawn_prey(Prey.Kind.ELITE, player.global_position + Vector2(18, 4))
+	await _frames(3)
+	target._dir = -1.0   # 面向玩家（不是背後）
+	var hp := target.hp
+	player.weapons.primary.try_fire(player.global_position + Vector2(8, -2), Vector2.RIGHT)
+	await _frames(2)
+	_check(is_equal_approx(hp - target.hp, 2.0 * 2.5), "stealth strike does x2.5 melee damage (%.1f)" % (hp - target.hp))
+	_check(not player.stealthed, "attacking breaks stealth")
+	target._dir = 1.0    # 背對玩家
+	target._enter(Prey.State.FLEE)
+	hp = target.hp
+	player.weapons.primary._cooldown_left = 0.0
+	player.weapons.primary.charges = 1
+	player.weapons.primary.try_fire(player.global_position + Vector2(8, -2), Vector2.RIGHT)
+	await _frames(2)
+	_check(is_equal_approx(hp - target.hp, 2.0 * 1.5), "hitting from behind does x1.5 (%.1f)" % (hp - target.hp))
+	target.queue_free()
+
+	await _frames(40)
+	_check(player.stealthed, "still holding C: stealth comes back after the cooldown")
+	Input.action_press(&"jump")
+	await _frames(2)
+	Input.action_release(&"jump")
+	_check(not player.stealthed, "jumping breaks stealth")
+	Input.action_release(&"stealth")
+	await _end(game)

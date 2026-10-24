@@ -78,6 +78,7 @@ var _charge_time := 0.0
 var _charge_dir := 1.0
 var _was_on_floor := true
 var _mines: Array = []
+var _alert_time := 0.0              # 剛發現玩家時頭上的「!」
 
 
 ## 在加入場景前呼叫，決定種類與數值
@@ -241,7 +242,7 @@ func _update_state(delta: float, dist: float) -> void:
 	match state:
 		State.WANDER:
 			stamina = minf(stamina + delta, max_stamina)
-			if dist < sense_range:
+			if dist < sense_range * _sense_mult():
 				_enter(State.FLEE)
 		State.FLEE:
 			stamina -= delta
@@ -264,7 +265,23 @@ func _update_state(delta: float, dist: float) -> void:
 				_resurface()
 
 
+## 玩家潛行時感知範圍縮小（Boss 不受影響）
+func _sense_mult() -> float:
+	if kind == Kind.BOSS or not is_instance_valid(player):
+		return 1.0
+	return player.sense_mult()
+
+
+## 玩家潛行、在正常感知範圍內但還沒被發現（頭上顯示「?」）
+func is_suspicious() -> bool:
+	return state == State.WANDER and is_instance_valid(player) and player.stealthed 		and global_position.distance_to(player.global_position) < sense_range
+
+
 func _enter(next: State) -> void:
+	if state == State.WANDER and next == State.FLEE:
+		_alert_time = 0.6
+		if is_instance_valid(player) and player.stealthed:
+			Audio.sfx("alert", -4.0)
 	state = next
 	_state_time = 0.0
 	_blocked_time = 0.0
@@ -517,6 +534,12 @@ func stun(duration: float) -> void:
 	_charge_time = 0.0
 
 
+## 攻擊從獵物背後來（獵物面向 _dir 的反方向）
+func is_behind(attacker: Vector2) -> bool:
+	var side := signf(attacker.x - global_position.x)
+	return side != 0.0 and side == -_dir
+
+
 ## 直接進入喘息（幽靈突襲）
 func exhaust() -> void:
 	if state == State.BURROWED or kind == Kind.BOSS:
@@ -596,7 +619,9 @@ func _fight_back(delta: float, to_player: Vector2, dist: float) -> void:
 	_dodge_time = maxf(_dodge_time - delta, 0.0)
 	var landed := is_on_floor() and not _was_on_floor
 	_was_on_floor = is_on_floor()
-	if state == State.STUNNED or not is_instance_valid(player) or player.dead:
+	_alert_time = maxf(_alert_time - delta, 0.0)
+	# 還沒發現玩家（遊蕩中）就不會反擊
+	if state == State.STUNNED or state == State.WANDER or not is_instance_valid(player) or player.dead:
 		return
 	match kind:
 		Kind.DRONE:
@@ -754,6 +779,10 @@ func _draw() -> void:
 	if kind == Kind.REPLICATOR:
 		var pulse := clampf(1.0 - split_time / 12.0, 0.0, 1.0)
 		draw_rect(body.grow(1.0 + pulse * 2.0), Color(0.8, 0.95, 1.0, 0.3 + pulse * 0.5), false, 1.0)
+	if is_suspicious():
+		draw_string(Fonts.ui(), Vector2(-20.0, -size.y * 0.5 - 3.0), "?", HORIZONTAL_ALIGNMENT_CENTER, 40.0, 11, Color("ffe14d"))
+	elif _alert_time > 0.0:
+		draw_string(Fonts.ui(), Vector2(-20.0, -size.y * 0.5 - 3.0), "!", HORIZONTAL_ALIGNMENT_CENTER, 40.0, 12, Color("ff2244"))
 	if _windup > 0.0 and int(_windup * 20.0) % 2 == 0:
 		tint = Color(3.0, 0.6, 0.6)   # 衝撞蓄力：閃紅
 	if _dodge_time > 0.0:
