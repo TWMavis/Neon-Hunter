@@ -27,6 +27,7 @@ func _ready() -> void:
 	await _test_settings_and_gamepad()
 	await _test_stealth()
 	await _test_stealth_drain()
+	await _test_vision()
 	print("SMOKE TEST: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	get_tree().quit(_failures)
 
@@ -446,6 +447,7 @@ func _test_pickup_falls() -> void:
 ## 把一隻獵物放在玩家旁邊、讓牠進入逃跑狀態
 func _place_prey(game: Game, kind: Prey.Kind, offset: Vector2) -> Prey:
 	var prey := game._spawn_prey(kind, game.player.global_position + offset)
+	prey._dir = -signf(offset.x) if offset.x != 0.0 else 1.0   # 面向玩家（獵物有視角）
 	await _frames(2)
 	prey.player = game.player
 	return prey
@@ -639,6 +641,7 @@ func _test_stealth() -> void:
 	await _frames(3)
 	_check(player.stealthed, "holding C on the ground enters stealth")
 	var rat := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(70, 10))
+	rat._dir = -1.0   # 面向玩家
 	await _frames(10)
 	_check(rat.state == Prey.State.WANDER, "a rat 70px away does not notice a stealthed player")
 	_check(rat.is_suspicious(), "the rat shows '?'")
@@ -694,4 +697,47 @@ func _test_stealth_drain() -> void:
 	var sneaking := e0 - RunState.energy
 	Input.action_release(&"stealth")
 	_check(absf(sneaking - normal * 0.5) < 0.2, "stealth halves energy drain (%.2f vs %.2f per second)" % [sneaking, normal])
+	await _end(game)
+
+
+func _test_vision() -> void:
+	print("prey vision:")
+	ClimbState.new_climb()
+	get_tree().paused = false
+	var game: Game = load("res://scenes/game/game.tscn").instantiate()
+	game.auto_advance = false
+	game.map_override = Section1Maps.floors()[0]
+	game.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(game)
+	await _frames(10)
+	for node in game._enemies.get_children():
+		node.queue_free()
+	game.floor_data.rat_count = 0
+	game.floor_data.drone_count = 0
+	var player := game.player
+	player.global_position = game.elevator.global_position + Vector2(-80, -12)
+	await _frames(20)
+	var rat := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(70, 10))
+	rat._dir = 1.0          # 背對玩家
+	rat._wander_timer = 99.0
+	await _frames(10)
+	_check(rat.state == Prey.State.WANDER, "a rat facing away does not see you 70px behind it")
+	rat._dir = -1.0         # 轉過來
+	await _frames(3)
+	_check(rat.state == Prey.State.FLEE, "once it turns around it sees you and flees")
+	rat.queue_free()
+	var rat2 := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(30, 10))
+	rat2._dir = 1.0
+	rat2._wander_timer = 99.0
+	await _frames(5)
+	_check(rat2.state == Prey.State.FLEE, "walking right behind it (30px) it hears your footsteps")
+	rat2.queue_free()
+	Input.action_press(&"stealth")
+	await _frames(5)
+	var rat3 := game._spawn_prey(Prey.Kind.RAT, player.global_position + Vector2(20, 10))
+	rat3._dir = 1.0
+	rat3._wander_timer = 99.0
+	await _frames(5)
+	_check(rat3.state == Prey.State.WANDER, "sneaking right behind it (20px) it does not notice")
+	Input.action_release(&"stealth")
 	await _end(game)

@@ -5,6 +5,8 @@ extends Node
 func _ready() -> void:
 	ClimbState.new_climb(&"pulse_rifle", &"em_net")
 	var game: Game = load("res://scenes/game/game.tscn").instantiate()
+	if OS.get_cmdline_user_args().has("stealth"):
+		game.map_override = Section1Maps.floors()[0]
 	if OS.get_cmdline_user_args().has("enemies"):
 		# 把每種獵物排在玩家前面，方便截圖
 		game.map_override = Section1Maps.floors()[0]
@@ -21,8 +23,10 @@ func _ready() -> void:
 	await get_tree().create_timer(0.3).timeout
 	if OS.get_cmdline_user_args().has("stealth"):
 		Input.action_press(&"stealth")
-		game.player.global_position = game.elevator.global_position + Vector2(-60, -12)
-		game._spawn_prey(Prey.Kind.RAT, game.player.global_position + Vector2(60, 10))
+		game.player.global_position = game.elevator.global_position + Vector2(-80, -12)
+		var watcher := game._spawn_prey(Prey.Kind.RAT, game.player.global_position + Vector2(70, 10))
+		watcher._dir = -1.0
+		watcher._wander_timer = 99.0
 		game._spawn_prey(Prey.Kind.KITER, game.player.global_position + Vector2(-60, 8))
 		return
 	if OS.get_cmdline_user_args().has("settings"):

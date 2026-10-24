@@ -24,6 +24,9 @@ const SPRITES := {
 	Kind.REPLICATOR: "replicator", Kind.ELITE: "elite", Kind.BOSS: "boss",
 	Kind.KITER: "kiter", Kind.MINELAYER: "minelayer",
 }
+const VIEW_HALF_ANGLE_COS := 0.5    # 視角：面向前方左右各 60 度（共 120 度）
+const HEAR_RADIUS := 48.0           # 背後只聽得到這麼近的腳步聲
+const HEAR_RADIUS_STEALTH := 14.0   # 潛行時背後幾乎要貼上才會發現
 const KITE_RANGE := 150.0          # 風箏手：離玩家超過這個距離就停下來射擊
 const MAX_MINES := 4               # 佈雷者同時留在場上的地雷上限
 
@@ -242,7 +245,7 @@ func _update_state(delta: float, dist: float) -> void:
 	match state:
 		State.WANDER:
 			stamina = minf(stamina + delta, max_stamina)
-			if dist < sense_range * _sense_mult():
+			if _can_detect_player(dist):
 				_enter(State.FLEE)
 		State.FLEE:
 			stamina -= delta
@@ -270,6 +273,37 @@ func _sense_mult() -> float:
 	if kind == Kind.BOSS or not is_instance_valid(player):
 		return 1.0
 	return player.sense_mult()
+
+
+## 視角：獵物面向前方 120 度內才看得到玩家；背後只聽得到很近的腳步聲。Boss 四周都看得到
+func _can_detect_player(dist: float) -> bool:
+	if not is_instance_valid(player) or player.dead:
+		return false
+	if kind == Kind.BOSS:
+		return dist < sense_range
+	if in_view(player.global_position):
+		return dist < sense_range * _sense_mult()
+	return dist < (HEAR_RADIUS_STEALTH if player.stealthed else HEAR_RADIUS)
+
+
+## 潛行時畫出獵物的視野（看得到你的範圍）
+func _draw_view_cone() -> void:
+	var reach := sense_range * _sense_mult()
+	var base := Vector2(_dir, 0.0).angle()
+	var spread := acos(VIEW_HALF_ANGLE_COS)
+	var points := PackedVector2Array([Vector2.ZERO])
+	for i in 9:
+		points.append(Vector2.RIGHT.rotated(base - spread + spread * 2.0 * i / 8.0) * reach)
+	draw_colored_polygon(points, Color(1.0, 0.88, 0.3, 0.08))
+	draw_polyline(points + PackedVector2Array([Vector2.ZERO]), Color(1.0, 0.88, 0.3, 0.25), 1.0)
+
+
+## 某個點在不在獵物的視角內
+func in_view(point: Vector2) -> bool:
+	var to := point - global_position
+	if to == Vector2.ZERO:
+		return true
+	return Vector2(_dir, 0.0).dot(to.normalized()) >= VIEW_HALF_ANGLE_COS
 
 
 ## 玩家潛行、在正常感知範圍內但還沒被發現（頭上顯示「?」）
@@ -766,6 +800,8 @@ func _sprite_frame() -> int:
 func _draw() -> void:
 	if state == State.BURROWED:
 		return
+	if state == State.WANDER and kind != Kind.BOSS and is_instance_valid(player) and player.stealthed 			and global_position.distance_to(player.global_position) < sense_range * 1.2:
+		_draw_view_cone()
 	var half := size * 0.5
 	var body := Rect2(-half, size)
 	var tint := Color.WHITE
