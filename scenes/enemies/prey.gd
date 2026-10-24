@@ -824,7 +824,7 @@ func _draw() -> void:
 	if _dodge_time > 0.0:
 		tint.a = 0.5
 	Art.draw(self, SPRITES[kind], 2, _sprite_frame(), Vector2.ZERO, _dir < 0.0, tint)
-	if kind == Kind.KITER and _attack_timer < 0.35 and state != State.CORNERED and state != State.STUNNED \
+	if kind == Kind.KITER and _attack_timer < 0.35 and state != State.CORNERED and state != State.STUNNED and state != State.WANDER \
 			and is_instance_valid(player) and global_position.distance_to(player.global_position) < 260.0:
 		draw_line(Vector2.ZERO, player.global_position - global_position, Color(color, 0.45), 1.0)  # 瞄準線
 	if _windup > 0.0:
